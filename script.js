@@ -1,5 +1,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
+  "use strict";
+
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
@@ -38,29 +40,44 @@ document.addEventListener("DOMContentLoaded", () => {
   const progressBar = document.getElementById("readingProgress");
 
   function updateProgress() {
+    if (!progressBar) return;
+
     const totalScrollable =
       document.documentElement.scrollHeight - window.innerHeight;
 
-    const percentage = totalScrollable > 0
-      ? (window.scrollY / totalScrollable) * 100
-      : 0;
+    const percentage =
+      totalScrollable > 0
+        ? (window.scrollY / totalScrollable) * 100
+        : 0;
 
-    progressBar.style.width = `${Math.min(100, percentage)}%`;
+    progressBar.style.width =
+      `${Math.min(100, Math.max(0, percentage))}%`;
   }
 
-  window.addEventListener("scroll", updateProgress, { passive: true });
+  window.addEventListener("scroll", updateProgress, {
+    passive: true
+  });
+
+  window.addEventListener("resize", updateProgress);
+
   updateProgress();
 
   // ==========================================
   // 3. START THE STORY
+  // Compatible with old and updated HTML
   // ==========================================
 
-  document.getElementById("beginStory").addEventListener("click", () => {
-    document.getElementById("journey").scrollIntoView({
-      behavior: reducedMotion ? "auto" : "smooth",
-      block: "start"
+  const beginStoryButton = document.getElementById("beginStory");
+  const journeySection = document.getElementById("journey");
+
+  if (beginStoryButton && journeySection) {
+    beginStoryButton.addEventListener("click", () => {
+      journeySection.scrollIntoView({
+        behavior: reducedMotion ? "auto" : "smooth",
+        block: "start"
+      });
     });
-  });
+  }
 
   // ==========================================
   // 4. FLOATING GOLDEN LIGHTS
@@ -79,10 +96,12 @@ document.addEventListener("DOMContentLoaded", () => {
     particle.style.left = `${Math.random() * 100}%`;
     particle.style.width = `${size}px`;
     particle.style.height = `${size}px`;
+
     particle.style.setProperty(
       "--duration",
       `${10 + Math.random() * 8}s`
     );
+
     particle.style.setProperty(
       "--drift",
       `${Math.round(Math.random() * 70 - 35)}px`
@@ -90,14 +109,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ambientLayer.appendChild(particle);
 
-    particle.addEventListener("animationend", () => particle.remove());
+    particle.addEventListener(
+      "animationend",
+      () => particle.remove(),
+      { once: true }
+    );
 
     window.setTimeout(() => {
-      if (particle.isConnected) particle.remove();
+      if (particle.isConnected) {
+        particle.remove();
+      }
     }, 20000);
   }
 
-  if (!reducedMotion) {
+  if (!reducedMotion && ambientLayer) {
     for (let i = 0; i < 12; i++) {
       window.setTimeout(createLight, i * 250);
     }
@@ -109,47 +134,63 @@ document.addEventListener("DOMContentLoaded", () => {
   // 5. HOUSEWARMING EVENT DETAILS
   // ==========================================
 
-  const eventTitle = "Housewarming Ceremony - Muringathery House";
-  const eventDescription =
-    "With grateful hearts, we invite you to celebrate our new home. We look forward to welcoming you!";
+  const eventTitle =
+    "Housewarming Ceremony - Muringathery House";
 
-  const eventLocation = "Muringathery House, Mullurkara, Kerala";
+  const eventDescription =
+    "With God's blessings and grateful hearts, we invite you " +
+    "to celebrate the housewarming of our new home. " +
+    "Your presence and blessings will make our day special.";
+
+  const eventLocation =
+    "Muringathery House, Mullurkara, Kerala";
+
+  // Keep this as a plain URL, not Markdown.
   const mapUrl =
     "https://maps.app.goo.gl/MheoGzrJeMvb5FfPA?g_st=ic";
 
-  // Event time: 18 October 2026, 12:00 PM IST.
-  // End time below: 1:30 PM IST.
+  // 18 October 2026, 12:00 PM IST.
+  // 12:00 PM IST = 06:30 UTC.
+  // Event ends at 1:30 PM IST = 08:00 UTC.
   const eventStart = "20261018T063000Z";
   const eventEnd = "20261018T080000Z";
 
-  // IMPORTANT:
-  // Replace this with your real WhatsApp number.
-  // Include India's country code 91, without +, spaces or dashes.
-  // Example format: "919876543210"
+  // WhatsApp number with country code.
+  // Keep digits only: country code + mobile number.
   const whatsappNumber = "918714143988";
 
   const whatsappMessage =
-    "Hello! Thank you for inviting me to your housewarming ceremony " +
-    "at Muringathery House, Mullurkara, on Sunday, 18 October 2026 " +
-    "at 12:00 PM. I would like to confirm my attendance.";
+    "Hello! Thank you for inviting me to your housewarming " +
+    "ceremony at Muringathery House, Mullurkara, on Sunday, " +
+    "18 October 2026 at 12:00 PM. I would like to confirm " +
+    "my attendance.";
+
+  // Shared event description
+  const fullEventDescription =
+    `${eventDescription}\n\n` +
+    `Venue: ${eventLocation}\n` +
+    `Google Maps: ${mapUrl}`;
 
   // ==========================================
   // 6. GOOGLE CALENDAR
   // ==========================================
 
-  const googleCalendarButton = document.getElementById("googleCalendar");
+  const googleCalendarButton =
+    document.getElementById("googleCalendar");
 
-  const calendarParameters = new URLSearchParams({
-    action: "TEMPLATE",
-    text: eventTitle,
-    dates: `${eventStart}/${eventEnd}`,
-    details:
-      `${eventDescription}\n\nVenue: ${eventLocation}\nMap: ${mapUrl}`,
-    location: eventLocation
-  });
+  if (googleCalendarButton) {
+    const calendarParameters = new URLSearchParams({
+      action: "TEMPLATE",
+      text: eventTitle,
+      dates: `${eventStart}/${eventEnd}`,
+      details: fullEventDescription,
+      location: eventLocation
+    });
 
-  googleCalendarButton.href =
-    `https://calendar.google.com/calendar/render?${calendarParameters.toString()}`;
+    googleCalendarButton.href =
+      "https://calendar.google.com/calendar/render?" +
+      calendarParameters.toString();
+  }
 
   // ==========================================
   // 7. DOWNLOAD CALENDAR EVENT (.ICS)
@@ -163,15 +204,19 @@ document.addEventListener("DOMContentLoaded", () => {
       .replace(/;/g, "\\;");
   }
 
-  document
-    .getElementById("downloadCalendar")
-    .addEventListener("click", () => {
-      const now = new Date();
+  function getICSTimestamp(date) {
+    return date
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}Z$/, "Z");
+  }
 
-      const timestamp = now
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .replace(/\.\d{3}/, "");
+  const downloadCalendarButton =
+    document.getElementById("downloadCalendar");
+
+  if (downloadCalendarButton) {
+    downloadCalendarButton.addEventListener("click", () => {
+      const timestamp = getICSTimestamp(new Date());
 
       const calendarLines = [
         "BEGIN:VCALENDAR",
@@ -180,67 +225,81 @@ document.addEventListener("DOMContentLoaded", () => {
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",
-        `UID:housewarming-20261018-${timestamp}@invitation.local`,
+        "UID:housewarming-20261018@muringathery-house",
         `DTSTAMP:${timestamp}`,
         `DTSTART:${eventStart}`,
         `DTEND:${eventEnd}`,
         `SUMMARY:${escapeICS(eventTitle)}`,
-        `DESCRIPTION:${escapeICS(
-          `${eventDescription}\nVenue: ${eventLocation}\nMap: ${mapUrl}`
-        )}`,
+        `DESCRIPTION:${escapeICS(fullEventDescription)}`,
         `LOCATION:${escapeICS(eventLocation)}`,
         "STATUS:CONFIRMED",
         "END:VEVENT",
         "END:VCALENDAR"
       ];
 
-      // ICS files use CRLF line endings.
       const calendarFile = new Blob(
         [calendarLines.join("\r\n") + "\r\n"],
-        { type: "text/calendar;charset=utf-8" }
+        {
+          type: "text/calendar;charset=utf-8"
+        }
       );
 
       const fileUrl = URL.createObjectURL(calendarFile);
       const downloadLink = document.createElement("a");
 
       downloadLink.href = fileUrl;
-      downloadLink.download = "Muringathery-House-Housewarming.ics";
+      downloadLink.download =
+        "Muringathery-House-Housewarming.ics";
 
       document.body.appendChild(downloadLink);
       downloadLink.click();
       downloadLink.remove();
 
-      window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+      window.setTimeout(() => {
+        URL.revokeObjectURL(fileUrl);
+      }, 1000);
     });
+  }
 
   // ==========================================
   // 8. WHATSAPP CONFIRMATION
   // ==========================================
 
-  const whatsappButton = document.getElementById("whatsappConfirm");
+  const whatsappButton =
+    document.getElementById("whatsappConfirm");
 
-  whatsappButton.href =
-    `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+  if (whatsappButton) {
+    const validWhatsAppNumber = /^\d{10,15}$/.test(
+      whatsappNumber
+    );
 
-  whatsappButton.addEventListener("click", (event) => {
-    if (
-      whatsappNumber.includes("YOURNUMBER") ||
-      !/^\d{10,15}$/.test(whatsappNumber)
-    ) {
-      event.preventDefault();
+    if (validWhatsAppNumber) {
+      whatsappButton.href =
+        `https://wa.me/${whatsappNumber}?text=` +
+        encodeURIComponent(whatsappMessage);
 
-      alert(
-        "Please update the WhatsApp number in script.js first. " +
-        "Include the country code, without spaces or the + symbol."
-      );
+      whatsappButton.target = "_blank";
+      whatsappButton.rel = "noopener noreferrer";
+    } else {
+      whatsappButton.href = "#";
+
+      whatsappButton.addEventListener("click", (event) => {
+        event.preventDefault();
+
+        alert(
+          "Please update the WhatsApp number in script.js. " +
+          "Include the country code without spaces or the + symbol."
+        );
+      });
     }
-  });
+  }
 
   // ==========================================
   // 9. SHARE THE INVITATION
   // ==========================================
 
-  const shareButton = document.getElementById("shareInvitation");
+  const shareButton =
+    document.getElementById("shareInvitation");
 
   const shareText =
     "You're warmly invited to our Housewarming Ceremony!\n\n" +
@@ -250,39 +309,47 @@ document.addEventListener("DOMContentLoaded", () => {
     `Google Maps: ${mapUrl}\n\n` +
     "We would love to celebrate this special day with you!";
 
-  shareButton.addEventListener("click", async () => {
-    const shareData = {
-      title: "Housewarming Invitation",
-      text: shareText,
-      url: window.location.href
-    };
+  if (shareButton) {
+    shareButton.addEventListener("click", async () => {
+      const shareData = {
+        title: "Housewarming Invitation",
+        text: shareText,
+        url: window.location.href
+      };
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (error) {
-        // A cancelled share is normal; don't show an error.
-        if (error.name !== "AbortError") {
-          console.error("Sharing failed:", error);
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+        } catch (error) {
+          // A cancelled share is normal.
+          if (error.name !== "AbortError") {
+            console.error("Sharing failed:", error);
+          }
         }
+
+        return;
       }
 
-      return;
-    }
+      // Fallback for browsers without native sharing.
+      const whatsappShareUrl =
+        "https://wa.me/?text=" +
+        encodeURIComponent(
+          `${shareText}\n\nInvitation: ${window.location.href}`
+        );
 
-    // Fallback for browsers without native sharing.
-    const whatsappShareUrl =
-      `https://wa.me/?text=${encodeURIComponent(
-        `${shareText}\n\nInvitation: ${window.location.href}`
-      )}`;
-
-    window.open(whatsappShareUrl, "_blank", "noopener,noreferrer");
-  });
+      window.open(
+        whatsappShareUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    });
+  }
 
   // ==========================================
   // 10. COUNTDOWN TIMER
   // ==========================================
 
+  // Browser-local timestamp for 12:00 PM in India.
   const eventDate = new Date(
     "2026-10-18T12:00:00+05:30"
   ).getTime();
@@ -297,30 +364,65 @@ document.addEventListener("DOMContentLoaded", () => {
   let countdownFinished = false;
 
   function updateCountdown() {
+    if (!countdown) return;
+
     const remaining = eventDate - Date.now();
 
     if (remaining <= 0) {
       if (!countdownFinished) {
         countdownFinished = true;
 
-        countdown.innerHTML =
-          '<p class="countdown-finished">' +
-          "Today is the day! We can't wait to welcome you." +
-          "</p>";
+        const now = new Date();
+        const eventDay = new Date(
+          "2026-10-18T00:00:00+05:30"
+        );
+
+        const isEventDay =
+          now.getFullYear() === eventDay.getFullYear() &&
+          now.getMonth() === eventDay.getMonth() &&
+          now.getDate() === eventDay.getDate();
+
+        countdown.innerHTML = "";
+
+        const message = document.createElement("p");
+        message.className = "countdown-finished";
+
+        message.textContent = isEventDay
+          ? "Today is the day! We can't wait to welcome you."
+          : "Thank you for being part of our special beginning.";
+
+        countdown.appendChild(message);
       }
 
       return;
     }
 
     const days = Math.floor(remaining / 86400000);
-    const hours = Math.floor((remaining % 86400000) / 3600000);
-    const minutes = Math.floor((remaining % 3600000) / 60000);
-    const seconds = Math.floor((remaining % 60000) / 1000);
+    const hours = Math.floor(
+      (remaining % 86400000) / 3600000
+    );
+    const minutes = Math.floor(
+      (remaining % 3600000) / 60000
+    );
+    const seconds = Math.floor(
+      (remaining % 60000) / 1000
+    );
 
-    dayElement.textContent = String(days).padStart(2, "0");
-    hourElement.textContent = String(hours).padStart(2, "0");
-    minuteElement.textContent = String(minutes).padStart(2, "0");
-    secondElement.textContent = String(seconds).padStart(2, "0");
+    if (dayElement) {
+      dayElement.textContent = String(days).padStart(2, "0");
+    }
+
+    if (hourElement) {
+      hourElement.textContent = String(hours).padStart(2, "0");
+    }
+
+    if (minuteElement) {
+      minuteElement.textContent = String(minutes).padStart(2, "0");
+    }
+
+    if (secondElement) {
+      secondElement.textContent = String(seconds).padStart(2, "0");
+    }
   }
 
   updateCountdown();
